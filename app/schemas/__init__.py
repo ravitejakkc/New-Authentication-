@@ -15,3 +15,18 @@ __all__ = [
     "UserResponse",
     "MessageResponse",
 ]
+from app.schemas.authorization import (
+    ManagedUserResponse,
+    PermissionResponse,
+    RoleAssignmentRequest,
+    RolePermissionAssignmentRequest,
+    RoleResponse,
+)
+
+__all__ = [
+    "ManagedUserResponse",
+    "PermissionResponse",
+    "RoleAssignmentRequest",
+    "RolePermissionAssignmentRequest",
+    "RoleResponse",
+]

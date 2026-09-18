@@ -19,12 +19,15 @@ def login_jwt(db: Session, payload: LoginRequest) -> TokenResponse:
             detail="Invalid email or password",
         )
 
-    access_token = create_access_token(
-        data={"sub": user.id, "email": user.email, "role": user.role}
-    )
-    refresh_token = create_refresh_token(
-        data={"sub": user.id, "email": user.email, "role": user.role}
-    )
+    if user.role is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User role is not configured",
+        )
+
+    token_data = {"sub": user.id, "email": user.email, "role": user.role.name}
+    access_token = create_access_token(data=token_data)
+    refresh_token = create_refresh_token(data=token_data)
 
     return TokenResponse(
         access_token=access_token,
