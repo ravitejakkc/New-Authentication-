@@ -1,9 +1,14 @@
 from datetime import datetime, timezone
 import uuid
-from sqlalchemy import DateTime, String
-from sqlalchemy.orm import Mapped, mapped_column
+from typing import TYPE_CHECKING
+
+from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.config.database import Base
+
+if TYPE_CHECKING:
+    from app.models.role import Role
 
 
 class User(Base):
@@ -24,11 +29,13 @@ class User(Base):
         String(255),
         nullable=False,
     )
-    role: Mapped[str] = mapped_column(
-        String(50),
-        default="CUSTOMER",
+    role_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("roles.id", ondelete="RESTRICT"),
+        index=True,
         nullable=False,
     )
+    role: Mapped["Role"] = relationship(back_populates="users", lazy="joined")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
