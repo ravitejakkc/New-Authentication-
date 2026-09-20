@@ -40,12 +40,20 @@ def refresh_jwt(db: Session, payload: RefreshRequest) -> TokenResponse:
             detail="User not found",
         )
 
-    new_access_token = create_access_token(
-        data={"sub": user.id, "email": user.email, "role": user.role}
-    )
-    new_refresh_token = create_refresh_token(
-        data={"sub": user.id, "email": user.email, "role": user.role}
-    )
+    if not user.roles:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User roles are not configured",
+        )
+
+    access_token_data = {
+        "sub": user.id,
+        "email": user.email,
+        "roles": [role.name for role in user.roles],
+    }
+    refresh_token_data = {"sub": user.id}
+    new_access_token = create_access_token(data=access_token_data)
+    new_refresh_token = create_refresh_token(data=refresh_token_data)
 
     return TokenResponse(
         access_token=new_access_token,

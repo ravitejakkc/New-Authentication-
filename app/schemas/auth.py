@@ -19,13 +19,13 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
-    expires_in_minutes: int = 30
+    expires_in_minutes: int 
 
 
 class UserResponse(BaseModel):
     id: str
     email: EmailStr
-    role: str
+    roles: list[str]
 
     model_config = ConfigDict(from_attributes=True)
 

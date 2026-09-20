@@ -1,4 +1,5 @@
 from urllib.parse import quote_plus
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,8 +13,8 @@ class Settings(BaseSettings):
 
     # JWT Security Configuration (Loaded securely from .env - no hardcoding)
     jwt_secret_key: str
-    jwt_algorithm: str 
-    jwt_access_token_expire_minutes: int 
+    jwt_algorithm: str
+    jwt_access_token_expire_minutes: int
     jwt_refresh_token_expire_days: int
 
     model_config = SettingsConfigDict(
