@@ -7,6 +7,7 @@ Create Date: 2026-09-18
 
 from alembic import op
 import sqlalchemy as sa
+import uuid
 
 
 revision = "0002_add_rbac"
@@ -15,20 +16,26 @@ branch_labels = None
 depends_on = None
 
 
-ADMIN_ROLE_ID = "e1649b05-857f-4a75-9a17-64a4e4f6b1f1"
-MEMBER_ROLE_ID = "69040c83-548a-4d14-9fb8-d0ec562ff049"
-
 PERMISSIONS = (
-    ("434a3b7d-6bdd-4d70-bd9e-2e85d2f541ce", "task", "read_assigned"),
-    ("0f9bfe95-bdc9-4822-bc0d-5c271d3d91f1", "task", "create"),
-    ("4db65b76-39a2-485d-ab95-8976dc6f7cf8", "task", "update_assigned"),
-    ("f2b69e87-3ee2-416e-bc9d-5545d218e7cf", "task", "delete"),
-    ("2690da70-94e9-46b2-a7ce-95e05d6a7dc8", "project", "read_all"),
-    ("abfcfe7b-992e-4ef3-8967-1d5033348008", "user", "manage"),
+    ("task", "read_assigned"),
+    ("task", "create"),
+    ("task", "update_assigned"),
+    ("task", "delete"),
+    ("project", "read_all"),
+    ("user", "manage"),
 )
 
 
 def upgrade() -> None:
+    role_ids = {
+        "ADMIN": str(uuid.uuid4()),
+        "MEMBER": str(uuid.uuid4()),
+    }
+    permission_ids = {
+        (resource, action): str(uuid.uuid4())
+        for resource, action in PERMISSIONS
+    }
+
     op.create_table(
         "roles",
         sa.Column("id", sa.String(length=36), nullable=False),
@@ -70,15 +77,19 @@ def upgrade() -> None:
     op.bulk_insert(
         roles,
         [
-            {"id": ADMIN_ROLE_ID, "name": "ADMIN"},
-            {"id": MEMBER_ROLE_ID, "name": "MEMBER"},
+            {"id": role_ids["ADMIN"], "name": "ADMIN"},
+            {"id": role_ids["MEMBER"], "name": "MEMBER"},
         ],
     )
     op.bulk_insert(
         permissions,
         [
-            {"id": permission_id, "resource": resource, "action": action}
-            for permission_id, resource, action in PERMISSIONS
+            {
+                "id": permission_ids[(resource, action)],
+                "resource": resource,
+                "action": action,
+            }
+            for resource, action in PERMISSIONS
         ],
     )
     member_permission_names = {
@@ -89,18 +100,21 @@ def upgrade() -> None:
     op.bulk_insert(
         role_permissions,
         [
-            {"role_id": role_id, "permission_id": permission_id}
-            for role_id in (ADMIN_ROLE_ID, MEMBER_ROLE_ID)
-            for permission_id, resource, action in PERMISSIONS
-            if role_id == ADMIN_ROLE_ID or (resource, action) in member_permission_names
+            {
+                "role_id": role_id,
+                "permission_id": permission_ids[(resource, action)],
+            }
+            for role_name, role_id in role_ids.items()
+            for resource, action in PERMISSIONS
+            if role_name == "ADMIN" or (resource, action) in member_permission_names
         ],
     )
 
     op.add_column("users", sa.Column("role_id", sa.String(length=36), nullable=True))
     op.execute(
         "UPDATE users SET role_id = CASE "
-        f"WHEN UPPER(role) = 'ADMIN' THEN '{ADMIN_ROLE_ID}' "
-        f"ELSE '{MEMBER_ROLE_ID}' END"
+        f"WHEN UPPER(role) = 'ADMIN' THEN '{role_ids['ADMIN']}' "
+        f"ELSE '{role_ids['MEMBER']}' END"
     )
     op.alter_column("users", "role_id", nullable=False)
     op.create_foreign_key(
@@ -121,8 +135,8 @@ def downgrade() -> None:
         sa.Column("role", sa.String(length=50), nullable=False, server_default="MEMBER"),
     )
     op.execute(
-        "UPDATE users SET role = CASE "
-        f"WHEN role_id = '{ADMIN_ROLE_ID}' THEN 'ADMIN' ELSE 'MEMBER' END"
+        "UPDATE users "
+        "SET role = COALESCE((SELECT name FROM roles WHERE roles.id = users.role_id), 'MEMBER')"
     )
     op.drop_index("ix_users_role_id", table_name="users")
     op.drop_constraint("fk_users_role_id_roles", "users", type_="foreignkey")

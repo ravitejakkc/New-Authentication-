@@ -25,7 +25,7 @@ class TokenResponse(BaseModel):
 class UserResponse(BaseModel):
     id: str
     email: EmailStr
-    role: str
+    roles: list[str]
 
     model_config = ConfigDict(from_attributes=True)
 

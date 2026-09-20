@@ -17,11 +17,12 @@ def register_user(db: Session, payload: RegisterRequest) -> UserResponse:
             detail="Email already registered",
         )
 
+    member_role = get_role_or_404(db, RoleName.MEMBER)
     user = User(
         email=payload.email,
         hashed_password=hash_password(payload.password),
-        role=get_role_or_404(db, RoleName.MEMBER),
     )
+    user.roles.append(member_role)
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -29,5 +30,5 @@ def register_user(db: Session, payload: RegisterRequest) -> UserResponse:
     return UserResponse(
         id=user.id,
         email=user.email,
-        role=user.role.name,
+        roles=[role.name for role in user.roles],
     )

@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from pathlib import Path
 
 import casbin
 from fastapi import Depends, HTTPException, status
@@ -8,35 +9,20 @@ from app.models.role import Role
 from app.models.user import User
 from app.shared.dependencies import get_current_user_jwt, get_db
 
-
-CASBIN_RBAC_MODEL = """
-[request_definition]
-r = sub, obj, act
-
-[policy_definition]
-p = sub, obj, act
-
-[role_definition]
-g = _, _
-
-[policy_effect]
-e = some(where (p.eft == allow))
-
-[matchers]
-m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
-"""
+CASBIN_MODEL_PATH = Path(__file__).with_name("model.config")
 
 
 def _build_enforcer(user: User) -> casbin.Enforcer:
     model = casbin.Model()
-    model.load_model_from_text(CASBIN_RBAC_MODEL)
+    model.load_model(str(CASBIN_MODEL_PATH))
     enforcer = casbin.Enforcer(model)
-    if user.role is None:
+    if not user.roles:
         return enforcer
 
-    enforcer.add_grouping_policy(user.id, user.role.name)
-    for permission in user.role.permissions:
-        enforcer.add_policy(user.role.name, permission.resource, permission.action)
+    for role in user.roles:
+        enforcer.add_grouping_policy(user.id, role.name)
+        for permission in role.permissions:
+            enforcer.add_policy(role.name, permission.resource, permission.action)
     return enforcer
 
 
@@ -50,11 +36,11 @@ def require_permission(resource: str, action: str) -> Callable:
         user_id = token_payload.get("sub")
         user = (
             db.query(User)
-            .options(selectinload(User.role).selectinload(Role.permissions))
+            .options(selectinload(User.roles).selectinload(Role.permissions))
             .filter(User.id == user_id)
             .first()
         )
-        if user is None or user.role is None:
+        if user is None or not user.roles:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
         enforcer = _build_enforcer(user)

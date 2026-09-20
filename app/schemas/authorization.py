@@ -1,7 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.role import RoleName
-
 
 class PermissionResponse(BaseModel):
     id: str
@@ -11,16 +9,25 @@ class PermissionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class PermissionCreateRequest(BaseModel):
+    resource: str = Field(min_length=1, max_length=50)
+    action: str = Field(min_length=1, max_length=50)
+
+
 class RoleResponse(BaseModel):
     id: str
-    name: RoleName
+    name: str
     permissions: list[PermissionResponse] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
 
+class RoleCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=50)
+
+
 class RoleAssignmentRequest(BaseModel):
-    role: RoleName
+    role: str = Field(min_length=1, max_length=50)
 
 
 class RolePermissionAssignmentRequest(BaseModel):
@@ -30,6 +37,6 @@ class RolePermissionAssignmentRequest(BaseModel):
 class ManagedUserResponse(BaseModel):
     id: str
     email: str
-    role: RoleResponse
+    roles: list[RoleResponse]
 
     model_config = ConfigDict(from_attributes=True)
